@@ -124,13 +124,43 @@ model Article {
   slug        String
   title       String
   body        String    @default("")
+  // S08: structured sections [{heading, body}] (the raw material for structure-aware chunking) + version.
+  sections    Json      @default("[]")
+  version     Int       @default(1)
   status      String    @default("draft") // draft | published
+  chunks      ArticleChunk[]
   updatedAt   DateTime  @updatedAt
   createdAt   DateTime  @default(now())
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, status])
-  // S10 foreshadow: ArticleChunk(pgvector) hangs off Article when RAG arrives (ADR-0002).
+}
+
+// S08: the chunking pipeline's output — the retrieval unit. pgvector `embedding` is added in S10 (ADR-0002);
+// the text + metadata + position land here now so S10 is a fill-in, not a migration.
+model ArticleChunk {
+  id          String  @id @default(cuid())
+  workspaceId String
+  articleId   String
+  article     Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  text        String
+  heading     String  @default("")
+  position    Int     @default(0)
+  index       Int     @default(0)
+
+  @@index([workspaceId])
+  @@index([articleId, index])
+}
+
+// S08: search analytics. What people search and DON'T find is the content roadmap.
+model SearchQuery {
+  id          String   @id @default(cuid())
+  workspaceId String
+  query       String
+  resultCount Int
+  at          DateTime @default(now())
+
+  @@index([workspaceId, resultCount, at])
 }
 
 // ── Routing engine (S06) ──────────────────────────────────────────────────────────────────────

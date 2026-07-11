@@ -41,6 +41,9 @@ importers:
       '@harbor/mailin':
         specifier: workspace:*
         version: link:../../packages/mailin
+      '@harbor/rag':
+        specifier: workspace:*
+        version: link:../../packages/rag
       '@harbor/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -187,6 +190,18 @@ importers:
         version: 2.1.9(@types/node@22.20.1)
 
   packages/messenger:
+    devDependencies:
+      '@harbor/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@22.20.1)
+
+  packages/rag:
     devDependencies:
       '@harbor/config':
         specifier: workspace:*
