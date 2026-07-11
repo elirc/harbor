@@ -27,6 +27,38 @@ export function stateAfterInbound(_current: ConversationState): ConversationStat
   return "open";
 }
 
+// ── Assignment claim (the double-claim arc) ──────────────────────────────────────────────────────
+export interface ClaimResult {
+  ok: boolean;
+  assigneeId: string | null;
+}
+
+/** In-memory model of a shared inbox's assignments, to demonstrate the claim race and its fix. */
+export class InboxAssignments {
+  private readonly assignee = new Map<string, string | null>();
+
+  seed(conversationId: string, assigneeId: string | null = null): void {
+    this.assignee.set(conversationId, assigneeId);
+  }
+  assigneeOf(conversationId: string): string | null {
+    return this.assignee.get(conversationId) ?? null;
+  }
+
+  /**
+   * ⚠️ NAIVE claim — read-then-write with no atomicity. Two agents claiming one UNASSIGNED conversation both
+   * read `assignee = null` and both write their own id: both think they won (the second silently overwrites
+   * the first). The `beforeWrite` hook exposes the race window. 🔗 The Tracer S6 approval race, support-shaped.
+   * [fix-later-in-PR] — a failing test pins this, then the atomic claim replaces it.
+   */
+  async claimNaive(conversationId: string, agentId: string, beforeWrite = async () => {}): Promise<ClaimResult> {
+    const current = this.assignee.get(conversationId) ?? null;
+    if (current !== null) return { ok: false, assigneeId: current };
+    await beforeWrite(); // <-- race window
+    this.assignee.set(conversationId, agentId);
+    return { ok: true, assigneeId: agentId };
+  }
+}
+
 // ── Internal notes never leave the building ──────────────────────────────────────────────────────
 export type OutgoingKind = "reply" | "note";
 
