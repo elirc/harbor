@@ -2,7 +2,7 @@
 
 | # | Planted in | What | Where | Harvested in | Status |
 |---|-----------|------|-------|--------------|--------|
-| 1 | S03 | Email threading keys only on `Subject` similarity — "Re: Re: Fwd:" chains and shared subjects merge unrelated conversations | mailin threader | S07/S13 (threading via References/In-Reply-To headers; cross-contact merge test) | planned |
+| 1 | S03 | Email threading keys only on `Subject` similarity — "Re: Re: Fwd:" chains and shared subjects merge unrelated conversations | mailin threader (threadBySubject; parseEmail already extracts references/inReplyTo but threading ignores them) | S07/S13 (threading via References/In-Reply-To headers; cross-contact merge test) | PLANTED (silent) — subject-based threading shipped; ADR-0003 flags headers as "deferred"; oblique 🔗 note only |
 | 2 | S05 | Messenger widget trusts postMessage without origin check — any page can drive the widget | messenger host bridge | S13 (origin allowlist; message-forgery probe) | planned |
 | 3 | S10 | Fixed-size chunking splits mid-sentence, and retrieval has no score threshold (always returns top-k even when irrelevant) | rag chunker/retriever | S12 (relevance threshold → refusal) + eval evidence | planned |
 | 4 | S11 | Triage prompt concatenates raw user message into instructions (no delimiting/defense) — prompt injection steers routing | triage prompt build | S13 (injection eval suite; delimiting + structured extraction) | planned |
