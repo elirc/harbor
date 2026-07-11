@@ -1,0 +1,10 @@
+{
+  "extends": "@harbor/config/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // DOM is type-only here: the api transitively imports @harbor/editor (via @harbor/collab), whose
+    // ProseMirror schema references HTMLElement in parseDOM. The server never touches a real DOM.
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src"]
+}

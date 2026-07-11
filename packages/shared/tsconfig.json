@@ -1,0 +1,4 @@
+{
+  "extends": "@harbor/config/tsconfig.base.json",
+  "include": ["src"]
+}

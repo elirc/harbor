@@ -1,0 +1,26 @@
+{
+  "name": "@harbor/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm --clean",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@harbor/db": "workspace:*",
+    "@harbor/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@harbor/config": "workspace:*",
+    "@types/node": "^22.7.9",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}
