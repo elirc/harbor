@@ -13,6 +13,7 @@ import { routingRoutes } from "./routes/routing";
 import { reportingRoutes } from "./routes/reporting";
 import { searchRoutes } from "./routes/search";
 import { ragRoutes } from "./routes/rag";
+import { triageRoutes } from "./routes/triage";
 
 /** Build (but don't start) the app so tests can boot it in-process via `app.inject(...)`. */
 export function buildServer(): FastifyInstance {
@@ -38,5 +39,6 @@ export function buildServer(): FastifyInstance {
   void app.register(reportingRoutes);
   void app.register(searchRoutes);
   void app.register(ragRoutes);
+  void app.register(triageRoutes);
   return app;
 }
