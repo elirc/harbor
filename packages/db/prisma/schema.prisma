@@ -1,0 +1,48 @@
+// Prisma schema for Harbor.
+// S01: the walking skeleton — Contact, Conversation, Message. A Message stores raw + parsed (identical until
+// S03's email parsing splits them). pgvector for RAG (S10) is planned in ADR-0002, added when it arrives.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Contact {
+  id            String         @id @default(cuid())
+  // Minimal in S01; identity resolution across channels (email/messenger/external) arrives S02.
+  name          String?
+  email         String?
+  createdAt     DateTime       @default(now())
+  conversations Conversation[]
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  subject   String    @default("(no subject)")
+  state     String    @default("open") // open | pending | snoozed | closed
+  contactId String
+  contact   Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([state, updatedAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction      String       @default("inbound") // inbound | outbound | note
+  // `raw` is the untouched source; `parsed` is the display-ready view. Identical in S01; by S03 `raw` is the
+  // full MIME and `parsed` is stripped + threaded. Store the original, derive the view — never mutate raw.
+  raw            String
+  parsed         String
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
