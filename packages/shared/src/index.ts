@@ -28,3 +28,5 @@ export interface InboxItem {
   lastMessagePreview: string;
   updatedAt: string;
 }
+
+export * from "./identity";
