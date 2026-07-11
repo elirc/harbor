@@ -1,5 +1,8 @@
 # Harbor
 
+**Status: v1.0.0 — all 15 sprints shipped.** See [`docs/COURSE-RETROSPECTIVE.md`](docs/COURSE-RETROSPECTIVE.md)
+for the eval-first arc, the flaw ledger, and the cost tally.
+
 **Harbor is a course, not just a codebase.** It builds an Intercom-style customer messaging & support
 platform — shared team inbox, inbound email, an embeddable web messenger, routing/SLAs, a help center, and an
 AI answer-bot — as a git-connected sequence of 15 teaching-rich sprints. Each sprint is a Pull Request loaded
@@ -40,5 +43,7 @@ CI runs **without live infra and without live LLM calls** — pure cores + in-me
 ## Docs
 - `SPEC.md` — the product spec.
 - `docs/sprints/` — the 15 sprint playbooks + the ritual (`00-workflow.md`).
-- `docs/adr/` — architecture decisions. `docs/curriculum/` — per-sprint learning notes.
+- `docs/adr/` — architecture decisions (0001–0015). `docs/curriculum/` — per-sprint learning notes.
 - `docs/LEARNER-GUIDE.md` — how to work through the course.
+- `docs/runbooks/`, `docs/audits/` — AI-operations runbooks, the S13 security audit, the S15 postmortem.
+- `CHANGELOG.md` · `docs/COURSE-RETROSPECTIVE.md`.
