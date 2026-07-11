@@ -233,6 +233,13 @@ model AIAction {
   @@index([conversationId, createdAt])
 }
 
+// S14: per-workspace bot autonomy settings (the trust ladder). Absent ⇒ DEFAULT_AUTONOMY (off).
+model AutonomySetting {
+  workspaceId String   @id
+  settings    Json // AutonomySettings from @harbor/shared
+  updatedAt   DateTime @updatedAt
+}
+
 model Message {
   id             String       @id @default(cuid())
   conversationId String
