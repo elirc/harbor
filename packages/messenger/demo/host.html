@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Acme Corp — a demo host page</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font: 16px/1.6 system-ui, sans-serif; max-width: 640px; margin: 48px auto; padding: 0 16px; }
+      button { font: inherit; padding: 6px 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>Acme Corp</h1>
+    <p>
+      This page pretends to be a <em>customer's</em> marketing site. The only Harbor code here is the one script
+      tag below — everything else (the chat UI, the connection, the state) lives inside an isolated iframe. The
+      buttons drive the widget through the <code>window.Harbor</code> bridge.
+    </p>
+    <p>
+      <button onclick="window.Harbor && window.Harbor.open()">Open chat</button>
+      <button onclick="window.Harbor && window.Harbor.close()">Close chat</button>
+      <button onclick="window.Harbor && window.Harbor.identify({ externalId: 'user_42', name: 'Dana' })">
+        Identify as Dana
+      </button>
+    </p>
+
+    <!-- ↓ The entire integration: one async, non-blocking script. -->
+    <script async src="/widget.js" data-workspace="demo-ws" data-app-origin="http://localhost:5173"></script>
+  </body>
+</html>
