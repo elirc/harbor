@@ -5,6 +5,7 @@ import { env } from "./env";
 import { healthRoutes } from "./routes/health";
 import { conversationRoutes } from "./routes/conversations";
 import { contactRoutes } from "./routes/contacts";
+import { inboundRoutes } from "./routes/inbound";
 
 /** Build (but don't start) the app so tests can boot it in-process via `app.inject(...)`. */
 export function buildServer(): FastifyInstance {
@@ -22,5 +23,6 @@ export function buildServer(): FastifyInstance {
   void app.register(healthRoutes);
   void app.register(conversationRoutes);
   void app.register(contactRoutes);
+  void app.register(inboundRoutes);
   return app;
 }
