@@ -50,7 +50,7 @@ jobs:
       - run: pnpm run lint
       - run: pnpm turbo run typecheck test build
       # Harbor gates — turn on as the sprints introduce them:
-      # - run: pnpm turbo run test:corpus     # S03 nasty-email corpus regression
+      - run: pnpm turbo run test:corpus       # S03 nasty-email corpus regression
       # - run: pnpm turbo run test:e2e        # S05+ Playwright, incl. the widget full loop
       # - run: pnpm turbo run budget          # S05 messenger loader <30KB
       # - run: pnpm turbo run eval:gate       # S09+ eval regression gates vs committed baselines
