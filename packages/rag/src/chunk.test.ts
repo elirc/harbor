@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { chunkFixed } from "./chunk";
+import { chunkFixed, chunkStructured } from "./chunk";
 import { parseSections, normalizeText } from "./normalize";
 
 const ARTICLE = `# Resetting your password
@@ -40,5 +40,28 @@ describe("[J] fixed chunker — the naive baseline (flaw #3 seed) (S08)", () => 
     // The seam between chunk 0 and 1 falls between words only by luck; the real damage:
     const tight = chunkFixed("password-reset-instructions", 10);
     expect(tight[0].text).toBe("password-r"); // 💥 mid-word — meaning sheared in half
+  });
+});
+
+describe("[S] structured chunker — the rebuild (S08)", () => {
+  it("chunks by section, tags each chunk with its heading + position", () => {
+    const chunks = chunkStructured(ARTICLE, { maxChars: 200, overlap: 0, articleSlug: "reset-password" });
+    // Every chunk knows where it came from — the raw material of a citation (S12).
+    expect(chunks.every((c) => c.metadata.articleSlug === "reset-password")).toBe(true);
+    expect(chunks.every((c) => typeof c.metadata.heading === "string")).toBe(true);
+    // No chunk cuts mid-word: each begins and ends on a whitespace/boundary of the source paragraphs.
+    for (const c of chunks) expect(c.text).toBe(c.text.trim());
+    // The login-screen guidance is together, not sheared across a fixed window.
+    const login = chunks.find((c) => c.metadata.heading === "From the login screen");
+    expect(login?.text).toContain("Forgot password");
+  });
+
+  it("carries an overlap tail across chunk boundaries when overlap > 0", () => {
+    const doc = parseSections(`## S\n\n${"alpha ".repeat(40).trim()}\n\n${"beta ".repeat(40).trim()}`);
+    const chunks = chunkStructured(doc, { maxChars: 120, overlap: 20 });
+    expect(chunks.length).toBeGreaterThan(1);
+    // The tail of chunk N reappears at the head of chunk N+1 (context preserved across the boundary).
+    const tail = chunks[0].text.slice(-20);
+    expect(chunks[1].text.startsWith(tail)).toBe(true);
   });
 });
