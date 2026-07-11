@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { apiGet, apiPost, subscribeInbox } from "./lib/api";
 import { Composer } from "./Composer";
+import { TriagePanel } from "./TriagePanel";
 import { Articles } from "./Articles";
 import { Routing } from "./Routing";
 import { Reports } from "./Reports";
@@ -99,6 +100,7 @@ export function App(): JSX.Element {
       {selectedItem && (
         <section style={{ marginTop: 16 }}>
           <h2 style={{ fontSize: 16 }}>{selectedItem.subject}</h2>
+          <TriagePanel conversationId={selectedItem.conversationId} />
           <Composer conversationId={selectedItem.conversationId} onSent={refresh} />
         </section>
       )}

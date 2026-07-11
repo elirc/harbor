@@ -26,6 +26,25 @@ export function regexGrader(re: RegExp): Grader {
   return (output) => bool(re.test(output), `regex ${re}`);
 }
 
+/**
+ * Per-field accuracy: parse the output as JSON and check one field equals the case's expected value. Used for
+ * classification evals (S11 triage) — run it once per field to get per-field accuracy (intent/urgency/team).
+ * The case's `expected` is the target value for `field`.
+ */
+export function jsonFieldEquals(field: string): Grader {
+  return (output, c) => {
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(output) as Record<string, unknown>;
+    } catch {
+      return { score: 0, pass: false, detail: "not valid JSON" };
+    }
+    const got = String(parsed[field] ?? "");
+    const want = c.expected ?? "";
+    return { score: got === want ? 1 : 0, pass: got === want, detail: `${field}: got "${got}", want "${want}"` };
+  };
+}
+
 /** Passes if the output parses as JSON and contains every required key (shape check, not value check). */
 export function jsonShape(requiredKeys: readonly string[]): Grader {
   return (output) => {
