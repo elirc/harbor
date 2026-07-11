@@ -57,6 +57,18 @@ export class InboxAssignments {
     this.assignee.set(conversationId, agentId);
     return { ok: true, assigneeId: agentId };
   }
+
+  /**
+   * The fix: an ATOMIC compare-and-set — claim only if still unassigned. Models
+   * `UPDATE conversation SET assignee = $me WHERE id = $id AND assignee IS NULL` + an affected-rows check.
+   * The loser gets a clean `ok:false` with the winner's id ("already claimed"), never a silent overwrite.
+   */
+  claim(conversationId: string, agentId: string): ClaimResult {
+    const current = this.assignee.get(conversationId) ?? null;
+    if (current !== null) return { ok: false, assigneeId: current }; // affected rows = 0
+    this.assignee.set(conversationId, agentId); // affected rows = 1 — atomic set-if-null
+    return { ok: true, assigneeId: agentId };
+  }
 }
 
 // ── Internal notes never leave the building ──────────────────────────────────────────────────────
