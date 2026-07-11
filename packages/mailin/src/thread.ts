@@ -49,6 +49,8 @@ export interface KnownMessage {
   /** A Message-ID we've previously stored (angle-bracketed, e.g. "<abc@harbor>"). */
   messageId: string;
   conversationId: string;
+  /** S13: which contact owns the conversation this message-id belongs to — for the cross-contact guard. */
+  contactId?: string;
 }
 
 export interface ScopedConversation {
@@ -87,10 +89,21 @@ export function threadEmail(
   openConversations: readonly ScopedConversation[],
 ): ThreadResult {
   // 1. Follow the reply chain. Most recent parent first (In-Reply-To), then the References ancestry.
+  //
+  // 🔒 S13 CROSS-CONTACT GUARD (harvest of flaw #1, part 2). A Message-ID match usually means "this is a reply
+  // in that thread." But headers travel: when Contact B FORWARDS Contact A's email, B's message carries A's
+  // References — and threading it into A's conversation would splice one customer's reply into another's thread
+  // (cross-contact contamination, the exact leak the subject-only threader caused, now via headers). So a
+  // header match is honored only if the matched conversation belongs to the SAME contact as the sender. A known
+  // sender matching another contact's thread ⇒ it's a forward/on-behalf ⇒ don't thread there.
   const chain = [input.inReplyTo, ...input.references].filter((id): id is string => Boolean(id));
   for (const id of chain) {
     const hit = knownMessages.find((m) => m.messageId === id);
-    if (hit) return { conversationId: hit.conversationId, via: "headers" };
+    if (!hit) continue;
+    const sameContact = hit.contactId === undefined || input.fromContactId === null || hit.contactId === input.fromContactId;
+    if (sameContact) return { conversationId: hit.conversationId, via: "headers" };
+    // else: header points into another contact's thread (a forward) — fall through, don't contaminate it.
+    break;
   }
 
   // 2. Subject fallback — ONLY within the sender's own open conversations (the misthread fix).
