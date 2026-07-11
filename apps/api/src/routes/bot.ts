@@ -3,9 +3,13 @@ import { z } from "zod";
 import { prisma, type Prisma } from "@harbor/db";
 import { MockEmbedder } from "@harbor/rag";
 import { DEFAULT_RELEVANCE_THRESHOLD } from "@harbor/rag";
-import { selectModel, MAX_ANSWER_TOKENS } from "@harbor/llm";
-import { refusalReason, buildGroundedPrompt, verifyCitations, isAcceptableAnswer, REFUSAL_MESSAGE } from "@harbor/shared";
+import { selectModel, MAX_ANSWER_TOKENS, costUsd } from "@harbor/llm";
+import { refusalReason, buildGroundedPrompt, verifyCitations, isAcceptableAnswer, REFUSAL_MESSAGE, redactPII, ContactCostLedger } from "@harbor/shared";
 import { llm } from "../llm";
+
+// 🔒 S13: per-contact LLM-cost ceiling — an abusive user can't run up the bill. In-memory here; a durable
+// counter (Redis/DB) in production. Bounded blast radius for cost abuse.
+const contactCost = new ContactCostLedger(0.5);
 
 /**
  * The answer-bot (S12). Draft a grounded reply — or refuse. The order of operations IS the guardrail:
@@ -33,8 +37,14 @@ export async function botRoutes(app: FastifyInstance): Promise<void> {
     }
     if (!question) return reply.code(400).send({ error: { code: "VALIDATION", message: "no question" } });
 
+    // 🔒 S13: enforce the per-contact cost ceiling before spending on retrieval + generation.
+    if (conversationId && !contactCost.withinBudget(conversationId)) {
+      return { answer: REFUSAL_MESSAGE, refused: true, reason: "cost_ceiling", sources: [], grounded: false };
+    }
+
     // 1. Retrieve WITH a relevance threshold (S12 harvest of flaw #3): score = 1 - cosine distance.
-    const qVec = toVectorLiteral(embedder.embed(question));
+    // (Redact PII from the question before it ships to the model — grounding comes from docs, not the PII.)
+    const qVec = toVectorLiteral(embedder.embed(redactPII(question)));
     const rows = await prisma.$queryRaw<Array<{ id: string; text: string; score: number }>>`
       SELECT "id", "text", 1 - ("embedding" <=> ${qVec}::vector) AS score
       FROM "ArticleChunk"
@@ -54,11 +64,12 @@ export async function botRoutes(app: FastifyInstance): Promise<void> {
         {
           model: selectModel("generate"),
           system: "You are a support answer-bot. Ground every claim in the provided context and cite it.",
-          messages: [{ role: "user", content: buildGroundedPrompt(question, relevant.map((r) => ({ id: r.id, text: r.text }))) }],
+          messages: [{ role: "user", content: buildGroundedPrompt(redactPII(question), relevant.map((r) => ({ id: r.id, text: r.text }))) }],
           maxTokens: MAX_ANSWER_TOKENS,
         },
         "bot-draft",
       );
+      if (conversationId) contactCost.record(conversationId, costUsd(selectModel("generate"), res.usage)); // tally per-contact spend
       // 4. Verify citations; an ungrounded answer is a bug — suppress it to a refusal rather than ship it.
       answer = isAcceptableAnswer(res.text, relevant.length) ? res.text : REFUSAL_MESSAGE;
       refused = answer === REFUSAL_MESSAGE;
