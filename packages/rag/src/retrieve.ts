@@ -39,6 +39,32 @@ export function reciprocalRankFusion(rankings: readonly (readonly string[])[], k
   return [...score.entries()].map(([id, s]) => ({ id, score: s })).sort((a, b) => b.score - a.score);
 }
 
+// ── Relevance threshold (S12 — harvest of flaw #3, part 2) ─────────────────────────────────────────
+/**
+ * 🔗 Ledger flaw #3, retrieval half. S10's `vectorTopK` ALWAYS returns k — even for a query with nothing
+ * relevant in the corpus, it returns the k least-bad matches, and a generator fed those confidently answers an
+ * out-of-scope question from irrelevant context. That's confident nonsense, the worst RAG failure.
+ *
+ * The fix is a RELEVANCE THRESHOLD: below a minimum similarity, retrieval reports "no good sources" instead of
+ * pretending. This is the single most important guardrail — it's the precondition for the bot's "I don't know."
+ * The exact threshold is tuned by the eval, not guessed (that's why S09 exists).
+ */
+export const DEFAULT_RELEVANCE_THRESHOLD = 0.12;
+
+export interface RetrievalResult {
+  chunks: Scored[];
+  /** false ⇒ nothing cleared the bar ⇒ the bot should refuse rather than answer from weak context. */
+  sufficient: boolean;
+  topScore: number;
+}
+
+export function retrieveRelevant(query: readonly number[], corpus: readonly VectorDoc[], opts: { k?: number; minScore?: number } = {}): RetrievalResult {
+  const minScore = opts.minScore ?? DEFAULT_RELEVANCE_THRESHOLD;
+  const top = vectorTopK(query, corpus, opts.k ?? 5);
+  const chunks = top.filter((s) => s.score >= minScore);
+  return { chunks, sufficient: chunks.length > 0, topScore: top[0]?.score ?? 0 };
+}
+
 // ── Retrieval metrics (the graders the S09 harness plugs into) ─────────────────────────────────────
 /**
  * 📘 recall@k: of the chunks that ARE relevant, how many did we fetch in the top k? You tune to recall@k where
