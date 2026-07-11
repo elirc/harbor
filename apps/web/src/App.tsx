@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { apiGet, apiPost, subscribeInbox } from "./lib/api";
 import { Composer } from "./Composer";
+import { Articles } from "./Articles";
 
 interface InboxItem {
   conversationId: string;
@@ -26,6 +27,7 @@ export function App(): JSX.Element {
   const [err, setErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [view, setView] = useState<"inbox" | "help">("inbox");
 
   const refresh = useCallback(() => {
     apiGet<InboxItem[]>("/inbox")
@@ -57,7 +59,13 @@ export function App(): JSX.Element {
 
   return (
     <main style={{ maxWidth: 820, margin: "40px auto", padding: "0 16px" }}>
-      <h1 style={{ color: "#1d76db" }}>Harbor · Inbox <span style={{ fontSize: 13, color: "#5b6572" }}>({ME})</span></h1>
+      <h1 style={{ color: "#1d76db" }}>Harbor <span style={{ fontSize: 13, color: "#5b6572" }}>({ME})</span></h1>
+      <nav style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <button style={navTab(view === "inbox")} onClick={() => setView("inbox")}>Inbox</button>
+        <button style={navTab(view === "help")} onClick={() => setView("help")}>Help Center</button>
+      </nav>
+      {view === "help" && <Articles />}
+      {view === "inbox" && <>
       {err && <p style={{ color: "salmon" }}>Couldn’t reach the API ({err}). Is it running on :3001?</p>}
       {flash && <p style={{ color: "#e3b341" }}>{flash}</p>}
       {items.length === 0 && !err && <p style={{ color: "#8b93a1" }}>No conversations yet.</p>}
@@ -92,6 +100,7 @@ export function App(): JSX.Element {
         Shared inbox — live over SSE, atomic claims, soft presence. Reply emails the customer; an internal note
         never leaves the building.
       </p>
+      </>}
     </main>
   );
 }
@@ -99,3 +108,6 @@ export function App(): JSX.Element {
 const row: CSSProperties = { border: "1px solid #232a32", borderRadius: 10, padding: 14, marginBottom: 8 };
 const badge: CSSProperties = { fontSize: 11, color: "#1d76db", border: "1px solid #232a32", borderRadius: 999, padding: "2px 8px" };
 const claimBtn: CSSProperties = { background: "#1d76db", color: "white", border: "none", borderRadius: 8, padding: "4px 12px", cursor: "pointer", fontSize: 12 };
+function navTab(active: boolean): CSSProperties {
+  return { background: active ? "#1d76db" : "transparent", color: active ? "white" : "#8b93a1", border: "1px solid #232a32", borderRadius: 8, padding: "6px 14px", cursor: "pointer" };
+}

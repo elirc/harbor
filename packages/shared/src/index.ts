@@ -32,3 +32,4 @@ export interface InboxItem {
 
 export * from "./identity";
 export * from "./conversation";
+export * from "./helpcenter";
