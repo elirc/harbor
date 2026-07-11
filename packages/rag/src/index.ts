@@ -5,3 +5,5 @@
  */
 export * from "./normalize";
 export * from "./chunk";
+export * from "./embed";
+export * from "./retrieve";

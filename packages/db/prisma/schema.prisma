@@ -147,6 +147,12 @@ model ArticleChunk {
   heading     String  @default("")
   position    Int     @default(0)
   index       Int     @default(0)
+  // S10: pgvector realized (ADR-0002 → ADR-0010). The embedding is an Unsupported native `vector` column
+  // (written/queried via raw SQL: `ORDER BY embedding <=> $q`). embeddingModel + embeddingDim VERSION it —
+  // changing the model orphans every vector, so re-embedding is a data migration (the S10 worker job).
+  embedding      Unsupported("vector(96)")?
+  embeddingModel String?
+  embeddingDim   Int?
 
   @@index([workspaceId])
   @@index([articleId, index])
