@@ -1,14 +1,16 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "@harbor/db";
-import { parseEmail, stripForDisplay, threadBySubject } from "@harbor/mailin";
+import { parseEmail, stripForDisplay, threadEmail } from "@harbor/mailin";
 
 /**
- * Inbound email pipeline (S03): provider webhook → parse MIME → resolve contact (S02) → thread → Message.
+ * Inbound email pipeline (S03, threading hardened S07): provider webhook → parse MIME → resolve contact (S02)
+ * → thread → Message.
  *
  * 🔍 DISPLAY-STRIP, STORE-RAW. We store the untouched MIME in `raw` and the stripped, display-ready body in
  * `parsed`. Stripping is a *view*; the original is never mutated, so a wrong strip is recoverable via the
- * "show original" toggle. Threading here matches on subject (see @harbor/mailin/thread — robustness revisited).
+ * "show original" toggle. Threading now follows the Message-ID chain (References/In-Reply-To), falling back to
+ * subject only within the same contact — the S07 harvest of the S03 subject-only flaw.
  */
 export async function inboundRoutes(app: FastifyInstance): Promise<void> {
   app.post("/inbound", async (req, reply) => {
@@ -31,22 +33,28 @@ export async function inboundRoutes(app: FastifyInstance): Promise<void> {
       return contact.id;
     });
 
-    // Thread by subject: append to an open conversation, or start a new one.
+    // Thread on the Message-ID chain first, then subject scoped to THIS contact (S07 harvest of flaw #1).
+    // Look up any conversation that owns a Message-ID this email replies to (the correct, robust signal).
+    const chain = [email.inReplyTo, ...email.references].filter((id): id is string => Boolean(id));
+    const knownRows = chain.length
+      ? await prisma.message.findMany({ where: { messageId: { in: chain } }, select: { messageId: true, conversationId: true } })
+      : [];
+    const known = knownRows.filter((m): m is { messageId: string; conversationId: string } => m.messageId !== null);
     const open = await prisma.conversation.findMany({
       where: { workspaceId, state: { in: ["open", "pending", "snoozed"] } },
-      select: { id: true, subject: true },
+      select: { id: true, subject: true, contactId: true },
     });
-    const threadedId = threadBySubject(email.subject, open);
+    const result = threadEmail({ inReplyTo: email.inReplyTo, references: email.references, subject: email.subject, fromContactId: contactId }, known, open);
     const conversationId =
-      threadedId ??
+      result.conversationId ??
       (await prisma.conversation.create({ data: { workspaceId, contactId, subject: email.subject || "(no subject)" } })).id;
 
-    // Store raw MIME + the display-stripped body. `text || html-fallback` keeps something for HTML-only mail.
+    // Store raw MIME + the display-stripped body + the Message-ID (so future replies can thread onto this).
     const displayBody = stripForDisplay(email.text || stripHtml(email.html));
-    await prisma.message.create({ data: { conversationId, direction: "inbound", raw, parsed: displayBody } });
+    await prisma.message.create({ data: { conversationId, direction: "inbound", raw, parsed: displayBody, messageId: email.messageId } });
     await prisma.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
 
-    return reply.code(202).send({ conversationId, threaded: threadedId !== null });
+    return reply.code(202).send({ conversationId, threaded: result.conversationId !== null, via: result.via });
   });
 }
 
