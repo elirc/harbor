@@ -25,12 +25,28 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
     }
   }
 
+  /**
+   * ✨ Ask the answer-bot for a DRAFT (S12). Assistive by default: the bot proposes a grounded reply (or refuses),
+   * and the agent reviews/edits/sends it. If the bot refuses (weak retrieval / out of scope), we say so rather
+   * than paste a confident guess — autonomy is earned in S14, never assumed.
+   */
+  async function draft(): Promise<void> {
+    setStatus("drafting…");
+    const res = await apiPost<{ answer: string; refused: boolean; grounded: boolean }>("/bot/draft", { conversationId }).catch(() => null);
+    if (!res) return setStatus("draft failed");
+    if (res.refused) return setStatus("bot refused (no confident grounded answer) — reply manually");
+    setKind("reply");
+    setBody(res.answer);
+    setStatus(res.grounded ? "AI draft inserted (grounded) — review before sending" : "AI draft inserted — review");
+  }
+
   const noteMode = kind === "note";
   return (
     <div style={{ ...wrap, borderColor: noteMode ? "#8a6d1d" : "#232a32", background: noteMode ? "#211d12" : "transparent" }}>
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
         <button style={tab(kind === "reply")} onClick={() => setKind("reply")}>Reply</button>
         <button style={tab(kind === "note")} onClick={() => setKind("note")}>Internal note</button>
+        <button style={{ ...tab(false), marginLeft: "auto" }} onClick={() => void draft()}>✨ AI draft</button>
         {noteMode && <span style={{ color: "#e3b341", fontSize: 12, alignSelf: "center" }}>👁 Not visible to the customer</span>}
       </div>
       <textarea
