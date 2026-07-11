@@ -100,6 +100,36 @@ model Assignment {
   @@index([conversationId, at])
 }
 
+// ── Help center (S05): public, SEO-facing articles. Harbor's one server-rendered surface. ──
+model Category {
+  id          String    @id @default(cuid())
+  workspaceId String
+  slug        String
+  name        String
+  order       Int       @default(0)
+  articles    Article[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, order])
+}
+
+model Article {
+  id          String    @id @default(cuid())
+  workspaceId String
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  slug        String
+  title       String
+  body        String    @default("")
+  status      String    @default("draft") // draft | published
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status])
+  // S10 foreshadow: ArticleChunk(pgvector) hangs off Article when RAG arrives (ADR-0002).
+}
+
 model Message {
   id             String       @id @default(cuid())
   conversationId String
