@@ -1,6 +1,10 @@
 /**
- * Structured outputs (S11). Tool/JSON mode makes a model's output *likely* to match a schema. This first
- * version assumes that's good enough: call the model, parse against the schema, return the value.
+ * Structured outputs (S11). Tool/JSON mode makes a model's output *likely* to match a schema — never certain.
+ * A model can return prose, a fenced code block, an extra field, or a missing one. So the rule: **treat model
+ * output like untrusted user input** — validate it, bound your retries, and always have a safe fallback.
+ *
+ * This is the reusable validate → reprompt → fallback triad. A handler that does `schema.parse(text)` and trusts
+ * it will crash in production the first time the model gets creative.
  */
 import type { z } from "zod";
 import type { LlmProvider } from "./types";
@@ -10,28 +14,45 @@ export interface StructuredOptions<T> {
   system: string;
   user: string;
   schema: z.ZodType<T, z.ZodTypeDef, unknown>;
-  /** The safe default returned when the model fails to produce a valid value. */
+  /** The safe default returned when both the first call and the one reprompt fail to validate. */
   fallback: T;
   maxTokens?: number;
 }
 
 export interface StructuredResult<T> {
   value: T;
-  ok: boolean;
+  ok: boolean; // true if the model produced a valid value (possibly after one reprompt)
   retried: boolean;
   fellBack: boolean;
 }
 
 /**
- * v1 — ask the model for a value and validate it. Assumes the model returns valid schema; throws otherwise.
- * (That assumption is about to meet reality.)
+ * Ask the model for a value, validate it against `schema`, and — on failure — reprompt ONCE with the
+ * validation error as feedback, then fall back to a safe default. Never throws on model output.
  */
 export async function structuredComplete<T>(provider: LlmProvider, opts: StructuredOptions<T>): Promise<StructuredResult<T>> {
   const maxTokens = opts.maxTokens ?? 512;
+
   const first = await provider.complete({ model: opts.model, system: opts.system, messages: [{ role: "user", content: opts.user }], maxTokens });
   const a = parseStructured(opts.schema, first.text);
   if (a.ok) return { value: a.value, ok: true, retried: false, fellBack: false };
-  throw new Error(`structured output did not match schema: ${a.error}`);
+
+  // One reprompt: hand the model its own bad output + the specific error, and demand JSON only.
+  const second = await provider.complete({
+    model: opts.model,
+    system: opts.system,
+    messages: [
+      { role: "user", content: opts.user },
+      { role: "assistant", content: first.text },
+      { role: "user", content: `That did not match the required schema: ${a.error}. Reply with ONLY the JSON object, no prose or code fences.` },
+    ],
+    maxTokens,
+  });
+  const b = parseStructured(opts.schema, second.text);
+  if (b.ok) return { value: b.value, ok: true, retried: true, fellBack: false };
+
+  // Bounded: never a second reprompt, never a crash, never a block — degrade to the safe default.
+  return { value: opts.fallback, ok: false, retried: true, fellBack: true };
 }
 
 type ParseOutcome<T> = { ok: true; value: T } | { ok: false; error: string };
