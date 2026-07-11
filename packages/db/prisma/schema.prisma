@@ -166,6 +166,9 @@ model Message {
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   direction      String       @default("inbound") // inbound | outbound | note
+  // S07: the email Message-ID (angle-bracketed). Header-based threading matches inbound In-Reply-To/References
+  // against these — the correct signal that harvests the S03 subject-only flaw.
+  messageId      String?
   // `raw` is the untouched source; `parsed` is the display-ready view. Identical in S01; by S03 `raw` is the
   // full MIME and `parsed` is stripped + threaded. Store the original, derive the view — never mutate raw.
   raw            String
@@ -173,4 +176,34 @@ model Message {
   createdAt      DateTime     @default(now())
 
   @@index([conversationId, createdAt])
+  @@index([messageId])
+}
+
+// ── SLAs (S07) ──────────────────────────────────────────────────────────────────────────────────
+// An SLA is a promise measured on a business calendar. Policy = the targets; Window = one live clock on one
+// conversation. The clock math is the pure @harbor/shared core; these rows are its persistence.
+model SLAPolicy {
+  id                  String   @id @default(cuid())
+  workspaceId         String
+  name                String   @default("Default")
+  priority            String   @default("normal") // which priority this applies to
+  channel             String?  // null = any channel
+  firstResponseMins   Int      @default(240) // business-minutes to first response
+  resolutionMins      Int      @default(1920)
+  createdAt           DateTime @default(now())
+
+  @@index([workspaceId, priority])
+}
+
+model SLAWindow {
+  id             String    @id @default(cuid())
+  conversationId String
+  kind           String    @default("first_response") // first_response | resolution
+  targetMs       Int
+  startedAt      DateTime  @default(now())
+  pauses         Json      @default("[]") // [{from, to|null}] — business-time paused (awaiting customer)
+  breachedAt     DateTime?
+  satisfiedAt    DateTime?
+
+  @@index([conversationId, kind])
 }

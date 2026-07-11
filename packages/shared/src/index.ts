@@ -34,3 +34,5 @@ export * from "./identity";
 export * from "./conversation";
 export * from "./helpcenter";
 export * from "./routing";
+export * from "./sla";
+export * from "./reporting";
