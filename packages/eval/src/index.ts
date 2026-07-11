@@ -9,4 +9,5 @@ export * from "./dataset";
 export * from "./graders";
 export * from "./runner";
 export * from "./regression";
+export * from "./recorder";
 export * from "./report";
