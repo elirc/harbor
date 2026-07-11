@@ -16,6 +16,7 @@ import { ragRoutes } from "./routes/rag";
 import { triageRoutes } from "./routes/triage";
 import { botRoutes } from "./routes/bot";
 import { aiRoutes } from "./routes/ai";
+import { obsRoutes } from "./routes/obs";
 
 /** Build (but don't start) the app so tests can boot it in-process via `app.inject(...)`. */
 export function buildServer(): FastifyInstance {
@@ -44,5 +45,6 @@ export function buildServer(): FastifyInstance {
   void app.register(triageRoutes);
   void app.register(botRoutes);
   void app.register(aiRoutes);
+  void app.register(obsRoutes);
   return app;
 }

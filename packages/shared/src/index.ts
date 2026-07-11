@@ -40,3 +40,4 @@ export * from "./triage";
 export * from "./answerbot";
 export * from "./security";
 export * from "./autonomy";
+export * from "./observability";
