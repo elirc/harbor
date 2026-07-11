@@ -20,6 +20,7 @@ export async function conversationRoutes(app: FastifyInstance): Promise<void> {
       conversationId: c.id,
       subject: c.subject,
       state: c.state as InboxItem["state"],
+      assigneeId: c.assigneeId,
       lastMessagePreview: (c.messages[0]?.parsed ?? "").slice(0, 120),
       updatedAt: c.updatedAt.toISOString(),
     }));
