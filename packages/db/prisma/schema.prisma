@@ -77,6 +77,9 @@ model Conversation {
   state       String    @default("open") // open | pending | snoozed | closed
   // S04: soft ownership. assigneeId null = unassigned; the claim is an atomic set-if-null (no double-claim).
   assigneeId  String?
+  // S06: routing outputs. A rule can assign to a team (then a strategy picks the agent) and set priority.
+  assignedTeamId String?
+  priority       String @default("normal") // low | normal | high | urgent
   contactId   String
   contact     Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
   messages    Message[]
@@ -128,6 +131,34 @@ model Article {
   @@unique([workspaceId, slug])
   @@index([workspaceId, status])
   // S10 foreshadow: ArticleChunk(pgvector) hangs off Article when RAG arrives (ADR-0002).
+}
+
+// ── Routing engine (S06) ──────────────────────────────────────────────────────────────────────
+// A rule's condition/actions are the closed-predicate AST from @harbor/shared, stored as JSON. We store the
+// AST, not a query string — there is nothing to eval, and evaluation is the same pure function in prod as in
+// tests. `order` is explicit (first-match-wins); the AST is validated against the Zod schema on write.
+model RoutingRule {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String   @default("")
+  order       Int      @default(100)
+  enabled     Boolean  @default(true)
+  condition   Json
+  actions     Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId, order])
+}
+
+// Persisted round-robin cursor per (workspace, team) — fairness needs a durable position, not randomness.
+model TeamCursor {
+  id          String @id @default(cuid())
+  workspaceId String
+  teamId      String
+  cursor      Int    @default(0)
+
+  @@unique([workspaceId, teamId])
 }
 
 model Message {
