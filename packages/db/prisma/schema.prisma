@@ -84,6 +84,7 @@ model Conversation {
   contact     Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
   messages    Message[]
   assignments Assignment[]
+  aiActions   AIAction[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -195,6 +196,41 @@ model TeamCursor {
   cursor      Int    @default(0)
 
   @@unique([workspaceId, teamId])
+}
+
+// ── AI (S11+) ─────────────────────────────────────────────────────────────────────────────────
+// Append-only cost ledger (S01 thesis, now persisted): every model call logged with tokens/cost/latency.
+// "Why is the AI bill $4k?" is a query over this table, grouped by purpose/model/day.
+model LLMCall {
+  id           String   @id @default(cuid())
+  workspaceId  String   @default("demo-ws")
+  model        String
+  purpose      String // triage | rag-answer | bot-draft …
+  inputTokens  Int
+  outputTokens Int
+  costUsd      Float
+  latencyMs    Int
+  at           DateTime @default(now())
+
+  @@index([workspaceId, purpose, at])
+}
+
+// An AI suggestion attached to a conversation — NEVER an auto-action. Triage (S11), bot drafts/replies (S12).
+// Stores the structured payload, the model's reasoning (agent-visible), confidence, and — when an agent
+// corrects it — the correction (which becomes an eval case: the data flywheel).
+model AIAction {
+  id              String       @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  type            String // triage | bot_draft | bot_reply
+  payload         Json // the structured output (e.g. TriageOutput)
+  reasoning       String       @default("")
+  confidence      Float        @default(0)
+  llmCallId       String?
+  correctedPayload Json?       // agent correction → tomorrow's eval case
+  createdAt       DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
 }
 
 model Message {
