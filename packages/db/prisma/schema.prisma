@@ -11,26 +11,77 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// S02: tenancy. A workspace is a support team's world; agents belong to it, optionally grouped into teams.
+model Workspace {
+  id        String    @id @default(cuid())
+  name      String
+  createdAt DateTime  @default(now())
+  agents    Agent[]
+  teams     Team[]
+  contacts  Contact[]
+}
+
+model Agent {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  email       String
+  name        String    @default("")
+  role        String    @default("agent") // agent | admin
+  teamId      String?
+  team        Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, email])
+}
+
+model Team {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  agents      Agent[]
+}
+
 model Contact {
   id            String         @id @default(cuid())
-  // Minimal in S01; identity resolution across channels (email/messenger/external) arrives S02.
+  workspaceId   String
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name          String?
-  email         String?
   createdAt     DateTime       @default(now())
+  identities    Identity[]
   conversations Conversation[]
+
+  @@index([workspaceId])
+}
+
+// One human, many identifiers. Unique per (workspace, type, value): email is NOT a primary key — people
+// share, change, and alias them. Resolve-or-create keys on this uniqueness; the merge folds duplicates.
+model Identity {
+  id          String   @id @default(cuid())
+  workspaceId String
+  contactId   String
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  type        String // email | messenger | external
+  value       String
+  verified    Boolean  @default(false) // auto-merge only on verified identifiers (S02 debate)
+  createdAt   DateTime @default(now())
+
+  @@unique([workspaceId, type, value])
+  @@index([contactId])
 }
 
 model Conversation {
-  id        String    @id @default(cuid())
-  subject   String    @default("(no subject)")
-  state     String    @default("open") // open | pending | snoozed | closed
-  contactId String
-  contact   Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  messages  Message[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  workspaceId String    @default("demo-ws")
+  subject     String    @default("(no subject)")
+  state       String    @default("open") // open | pending | snoozed | closed
+  contactId   String
+  contact     Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  @@index([state, updatedAt])
+  @@index([workspaceId, state, updatedAt])
 }
 
 model Message {
