@@ -1,0 +1,10 @@
+{
+  "name": "retrieval-smoke",
+  "note": "S10 retrieval eval. Each case is a query plus the answer phrase a correctly-retrieved chunk must contain — graded with recall@k / MRR from @harbor/rag. This is the dataset that finally GRADES the S08 chunker choice (the chunker showdown). Learner lab: grow it to 20+ cases, including adversarial and ambiguous queries where the honest answer is 'refuse / ask a clarifying question' — the retrieval-threshold half of flaw #3 (no score floor) means the current system will confidently retrieve *something* for those; that's the bug S12 harvests.",
+  "cases": [
+    { "id": "reset-expiry", "input": "how long until the password reset link expires", "answer": "exactly one hour", "tags": ["retrieval"] },
+    { "id": "recovery-code-uses", "input": "how many times can I use a recovery code", "answer": "exactly once", "tags": ["retrieval"] },
+    { "id": "enable-2fa", "input": "how do I turn on two factor authentication", "answer": "security settings", "tags": ["retrieval"] },
+    { "id": "irrelevant", "input": "what is the airspeed velocity of an unladen swallow", "answer": "", "tags": ["adversarial", "should-refuse"] }
+  ]
+}
