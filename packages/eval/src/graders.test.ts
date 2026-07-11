@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { exactMatch, contains, regexGrader, jsonShape, parseScore10 } from "./graders";
+import { exactMatch, contains, regexGrader, jsonShape, makeLlmJudge, parseScore10, rubricPrompt } from "./graders";
 import type { EvalCase } from "./types";
+import type { LlmProvider, CompleteRequest, CompleteResponse } from "@harbor/llm";
 
 const c = (over: Partial<EvalCase> = {}): EvalCase => ({ id: "c1", input: "in", ...over });
 
@@ -26,5 +27,34 @@ describe("parseScore10 (S09)", () => {
     expect(parseScore10("Score: 7.5/10")).toBe(0.75);
     expect(parseScore10("nonsense")).toBe(0);
     expect(parseScore10("11")).toBe(1); // clamped
+  });
+});
+
+/** A faithful rubric judge: YES iff the answer literally contains the criterion phrase. */
+function faithfulJudge(): LlmProvider {
+  return {
+    complete(req: CompleteRequest): Promise<CompleteResponse> {
+      const prompt = req.messages.at(-1)?.content ?? "";
+      const answer = /Answer:\n([\s\S]*?)\n\nCriterion:/.exec(prompt)?.[1] ?? "";
+      const criterion = /Criterion: (.*)\n/.exec(prompt)?.[1] ?? "";
+      const text = answer.toLowerCase().includes(criterion.toLowerCase()) ? "YES" : "NO";
+      return Promise.resolve({ text, usage: { inputTokens: 1, outputTokens: 1 }, stopReason: "end_turn" });
+    },
+  };
+}
+
+describe("LLM-as-judge, rubric mode (S09)", () => {
+  it("scores the fraction of criteria met", async () => {
+    const judge = makeLlmJudge(faithfulJudge(), { mode: "rubric" });
+    const good = await judge("Click Forgot password, then use the reset link.", c({ rubric: ["Forgot password", "reset link"] }));
+    expect(good).toMatchObject({ score: 1, pass: true, detail: "2/2 criteria met" });
+
+    const partial = await judge("Click Forgot password.", c({ rubric: ["Forgot password", "reset link"] }));
+    expect(partial.score).toBe(0.5);
+    expect(partial.pass).toBe(false);
+  });
+
+  it("the rubric prompt asks one yes/no question per criterion", () => {
+    expect(rubricPrompt("q", "a", "mentions X")).toContain("Answer YES or NO");
   });
 });
