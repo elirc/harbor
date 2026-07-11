@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "r
 import { apiGet, apiPost, subscribeInbox } from "./lib/api";
 import { Composer } from "./Composer";
 import { Articles } from "./Articles";
+import { Routing } from "./Routing";
 
 interface InboxItem {
   conversationId: string;
@@ -27,7 +28,7 @@ export function App(): JSX.Element {
   const [err, setErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
-  const [view, setView] = useState<"inbox" | "help">("inbox");
+  const [view, setView] = useState<"inbox" | "help" | "routing">("inbox");
 
   const refresh = useCallback(() => {
     apiGet<InboxItem[]>("/inbox")
@@ -63,8 +64,10 @@ export function App(): JSX.Element {
       <nav style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <button style={navTab(view === "inbox")} onClick={() => setView("inbox")}>Inbox</button>
         <button style={navTab(view === "help")} onClick={() => setView("help")}>Help Center</button>
+        <button style={navTab(view === "routing")} onClick={() => setView("routing")}>Routing</button>
       </nav>
       {view === "help" && <Articles />}
+      {view === "routing" && <Routing />}
       {view === "inbox" && <>
       {err && <p style={{ color: "salmon" }}>Couldn’t reach the API ({err}). Is it running on :3001?</p>}
       {flash && <p style={{ color: "#e3b341" }}>{flash}</p>}
