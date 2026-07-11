@@ -6,6 +6,7 @@
  */
 export * from "./types";
 export * from "./dataset";
+export * from "./graders";
 export * from "./runner";
 export * from "./regression";
 export * from "./report";
