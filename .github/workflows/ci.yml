@@ -1,0 +1,59 @@
+name: CI
+
+# Activates once the monorepo exists (Sprint 01 adds pnpm + Turborepo). Until then the `detect` job
+# skips the build jobs so `main` stays green on a docs-only repo. As Harbor introduces its gates
+# (email corpus, widget size budget, E2E, eval regression), uncomment the matching lines below.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      has_code: ${{ steps.check.outputs.has_code }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ -f package.json ]; then
+            echo "has_code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_code=false (docs-only repo; skipping build jobs)"
+            echo "has_code=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  verify:
+    needs: detect
+    if: needs.detect.outputs.has_code == 'true'
+    runs-on: ubuntu-latest
+    # Harbor's tests run WITHOUT live infra AND WITHOUT live LLM calls: pure cores + in-memory fakes + a
+    # MOCK model returning recorded fixtures keyed by prompt hash. DB/queue/SSE wiring is verified via
+    # typecheck + build (+ E2E from S05). Turn these on when a sprint needs them:
+    # services:
+    #   postgres: { image: pgvector/pgvector:pg16, env: { POSTGRES_PASSWORD: postgres }, ports: ['5432:5432'] }
+    #   redis:    { image: redis:7, ports: ['6379:6379'] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm turbo run typecheck test build
+      # Harbor gates — turn on as the sprints introduce them:
+      # - run: pnpm turbo run test:corpus     # S03 nasty-email corpus regression
+      # - run: pnpm turbo run test:e2e        # S05+ Playwright, incl. the widget full loop
+      # - run: pnpm turbo run budget          # S05 messenger loader <30KB
+      # - run: pnpm turbo run eval:gate       # S09+ eval regression gates vs committed baselines
+  #
+  # A separate nightly-live-eval.yml (schedule-triggered, non-blocking, hard cost cap, real Claude API)
+  # lands in S09 — CI itself never makes a live LLM call.
