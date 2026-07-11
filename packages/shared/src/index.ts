@@ -38,3 +38,4 @@ export * from "./sla";
 export * from "./reporting";
 export * from "./triage";
 export * from "./answerbot";
+export * from "./security";

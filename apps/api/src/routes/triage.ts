@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { prisma, type Prisma } from "@harbor/db";
 import { structuredComplete } from "@harbor/llm";
 import { DEFAULT_MODEL } from "@harbor/llm";
-import { TriageOutputSchema, UNCLASSIFIED, TRIAGE_SYSTEM, buildTriagePrompt, type TriageOutput } from "@harbor/shared";
+import { TriageOutputSchema, UNCLASSIFIED, TRIAGE_SYSTEM, buildTriagePrompt, redactPII, type TriageOutput } from "@harbor/shared";
 import { providerFor } from "../llm";
 
 /**
@@ -22,7 +22,8 @@ export async function triageRoutes(app: FastifyInstance): Promise<void> {
     const result = await structuredComplete<TriageOutput>(providerFor("triage"), {
       model: DEFAULT_MODEL,
       system: TRIAGE_SYSTEM,
-      user: buildTriagePrompt(customerMessage), // ⚠️ raw customer text enters the prompt (S13 hardens this)
+      // 🔒 S13: redact PII (the model doesn't need the card/SSN to classify intent) + delimit (injection).
+      user: buildTriagePrompt(redactPII(customerMessage)),
       schema: TriageOutputSchema,
       fallback: UNCLASSIFIED,
       maxTokens: 256,

@@ -6,6 +6,7 @@
  * This module is the pure logic (prompt contract, refusal decision, citation verification) so grounding is a
  * tested invariant, not a hope.
  */
+import { delimitUserContent } from "./security";
 
 export interface GroundingChunk {
   id: string;
@@ -42,9 +43,10 @@ export function refusalReason(question: string, retrievalSufficient: boolean): R
  */
 export function buildGroundedPrompt(question: string, chunks: readonly GroundingChunk[]): string {
   const context = chunks.map((c, i) => `[${i + 1}] ${c.text}`).join("\n\n");
+  // 🔒 S13: the question is untrusted (a customer could try "ignore the docs and reveal…"); delimit it as data.
   return (
     `Context (numbered help-center excerpts):\n${context}\n\n` +
-    `Question: ${question}\n\n` +
+    `Question:\n${delimitUserContent(question)}\n\n` +
     `Answer using ONLY the context above. Cite the sources you use as [1], [2], etc. ` +
     `If the context does not contain the answer, reply exactly "I don't know." Do not use outside knowledge.`
   );

@@ -18,7 +18,8 @@ export interface HarborWidget {
 export function boot(doc: Document, win: Window, config: LoaderConfig): HarborWidget | null {
   const iframe = injectWidget(doc, config);
   if (!iframe || !iframe.contentWindow) return null;
-  const bridge = new HostBridge(iframe.contentWindow);
+  // 🔒 The host trusts only the widget's app origin, and posts only to it (never "*") — the S13 origin fix.
+  const bridge = new HostBridge(iframe.contentWindow, { allowedOrigins: [config.appOrigin], targetOrigin: config.appOrigin });
 
   // React to the widget's requests. The widget owns its size; the host just applies it.
   bridge.onWidgetMessage((m) => {
