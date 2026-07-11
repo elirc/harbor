@@ -1,0 +1,121 @@
+:root {
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #0b0d10;
+  color: #e6e9ef;
+}
+
+/* ProseMirror editor surface (S03). PM manages this DOM; we only style it. */
+.folio-editor .ProseMirror {
+  outline: none;
+  min-height: 300px;
+}
+.folio-editor h1 {
+  font-size: 1.7em;
+  margin: 0.6em 0 0.3em;
+}
+.folio-editor h2 {
+  font-size: 1.4em;
+  margin: 0.6em 0 0.3em;
+}
+.folio-editor h3 {
+  font-size: 1.15em;
+  margin: 0.6em 0 0.3em;
+}
+.folio-editor p {
+  margin: 0.35em 0;
+}
+.folio-editor blockquote {
+  border-left: 3px solid #7c5cff;
+  margin: 0.5em 0;
+  padding-left: 12px;
+  color: #b8bfca;
+}
+.folio-editor pre {
+  background: #14181d;
+  border: 1px solid #232a32;
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.folio-editor code {
+  background: #14181d;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.folio-editor ul[data-todo] {
+  list-style: none;
+  padding-left: 1.2em;
+}
+.folio-editor hr {
+  border: none;
+  border-top: 1px solid #2b333d;
+  margin: 0.8em 0;
+}
+.folio-editor a {
+  color: #7c5cff;
+}
+.folio-editor img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 0.5em 0;
+}
+/* S04 block drag handle: a gutter grip that appears on hover. */
+.folio-block-handle {
+  position: absolute;
+  left: -18px;
+  color: #4b5563;
+  cursor: grab;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.folio-editor .ProseMirror > * {
+  position: relative;
+}
+.folio-editor .ProseMirror > *:hover > .folio-block-handle {
+  opacity: 1;
+}
+/* S07 remote cursors via y-prosemirror (yCursorPlugin) — relative positions, so they track correctly. */
+.ProseMirror-yjs-cursor {
+  position: relative;
+  margin-left: -1px;
+  margin-right: -1px;
+  border-left: 2px solid black;
+  border-right: 2px solid black;
+  word-break: normal;
+  pointer-events: none;
+}
+.ProseMirror-yjs-cursor > div {
+  position: absolute;
+  top: -1.3em;
+  left: -2px;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px 3px 3px 0;
+  color: white;
+  white-space: nowrap;
+}
+/* y-prosemirror selection highlight */
+.ProseMirror-yjs-selection {
+  opacity: 0.35;
+}
+/* S09 suggestion mode (tracked changes as marks) */
+.folio-sugg-ins {
+  color: #2fbf71;
+  text-decoration: underline;
+  text-decoration-color: rgba(47, 191, 113, 0.6);
+}
+.folio-sugg-del {
+  color: #e6584d;
+  text-decoration: line-through;
+}
