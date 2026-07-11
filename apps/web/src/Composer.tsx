@@ -56,7 +56,8 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
         style={{ ...textarea, borderColor: noteMode ? "#8a6d1d" : "#232a32" }}
       />
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-        <span style={{ color: "#8b93a1", fontSize: 12 }}>{status}</span>
+        {/* S14 a11y: status changes (drafting, sent, bot refused) announced politely to screen readers. */}
+        <span role="status" aria-live="polite" style={{ color: "#8b93a1", fontSize: 12 }}>{status}</span>
         <button style={sendBtn} onClick={() => void send()}>{noteMode ? "Save note" : "Send reply"}</button>
       </div>
     </div>

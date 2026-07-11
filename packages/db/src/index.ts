@@ -6,4 +6,4 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
 export { Prisma } from "@prisma/client";
-export type { Workspace, Agent, Team, Contact, Identity, Conversation, Message, Assignment, Article, Category, RoutingRule, TeamCursor, SLAPolicy, SLAWindow, ArticleChunk, SearchQuery, LLMCall, AIAction } from "@prisma/client";
+export type { Workspace, Agent, Team, Contact, Identity, Conversation, Message, Assignment, Article, Category, RoutingRule, TeamCursor, SLAPolicy, SLAWindow, ArticleChunk, SearchQuery, LLMCall, AIAction, AutonomySetting } from "@prisma/client";

@@ -5,6 +5,7 @@ import { MockEmbedder } from "@harbor/rag";
 import { DEFAULT_RELEVANCE_THRESHOLD } from "@harbor/rag";
 import { selectModel, MAX_ANSWER_TOKENS, costUsd } from "@harbor/llm";
 import { refusalReason, buildGroundedPrompt, verifyCitations, isAcceptableAnswer, REFUSAL_MESSAGE, redactPII, ContactCostLedger } from "@harbor/shared";
+import { autonomyDecision, buildHandoffNote, DEFAULT_AUTONOMY, type AutonomySettings } from "@harbor/shared";
 import { llm } from "../llm";
 
 // 🔒 S13: per-contact LLM-cost ceiling — an abusive user can't run up the bill. In-memory here; a durable
@@ -76,17 +77,44 @@ export async function botRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const citations = verifyCitations(answer, relevant.length);
+    const confidence = refused ? 0 : Math.min(1, relevant[0]?.score ?? 0);
+
+    // 🔒 S14 AUTONOMY GATE. Load the workspace's settings (absent ⇒ OFF) and decide auto-send vs draft vs
+    // handoff. The safe answer at every branch is "let a human handle it," never "act anyway."
+    const settingsRow = await prisma.autonomySetting.findUnique({ where: { workspaceId } });
+    const settings = (settingsRow?.settings as unknown as AutonomySettings) ?? DEFAULT_AUTONOMY;
+    const topic = await topicOf(conversationId); // from the latest triage AIAction
+    const decision = autonomyDecision({ settings, refused, confidence, retrievalScore: relevant[0]?.score ?? 0, topic, businessHoursOk: true });
+
     if (conversationId) {
+      const isAuto = decision.action === "auto_send" || decision.action === "auto_send_cc";
+      if (isAuto) {
+        // The bot ACTS: send an outbound reply. (auto_cc additionally leaves an agent-visible note.)
+        await prisma.message.create({ data: { conversationId, direction: "outbound", raw: answer, parsed: answer } });
+        if (decision.action === "auto_send_cc") await prisma.message.create({ data: { conversationId, direction: "note", raw: `🤖 auto-replied (CC): ${decision.reason}`, parsed: `🤖 auto-replied (CC): ${decision.reason}` } });
+      } else if (decision.action === "handoff") {
+        const recent = await prisma.message.findMany({ where: { conversationId }, orderBy: { createdAt: "desc" }, take: 3, select: { parsed: true } });
+        const note = buildHandoffNote(question, recent.map((m) => m.parsed).reverse(), { answer, refused, reason, citations: citations.cited });
+        await prisma.message.create({ data: { conversationId, direction: "note", raw: note, parsed: note } });
+      }
       await prisma.aIAction.create({
         data: {
           conversationId,
-          type: "bot_draft",
-          payload: { answer, refused, reason, citations } as unknown as Prisma.InputJsonValue,
-          reasoning: reason ?? "grounded answer",
-          confidence: refused ? 0 : Math.min(1, relevant[0]?.score ?? 0),
+          type: isAuto ? "bot_reply" : "bot_draft",
+          payload: { answer, refused, reason, citations, action: decision.action } as unknown as Prisma.InputJsonValue,
+          reasoning: decision.reason,
+          confidence,
         },
       });
     }
-    return { answer, refused, reason, sources: relevant.map((r) => ({ id: r.id, score: r.score })), grounded: citations.grounded };
+    return { answer, refused, reason, action: decision.action, actionReason: decision.reason, sources: relevant.map((r) => ({ id: r.id, score: r.score })), grounded: citations.grounded };
   });
+}
+
+/** The conversation's current topic = its latest triage intent (else "other"). Feeds the autonomy allowlist. */
+async function topicOf(conversationId: string | undefined): Promise<string> {
+  if (!conversationId) return "other";
+  const triage = await prisma.aIAction.findFirst({ where: { conversationId, type: "triage" }, orderBy: { createdAt: "desc" } });
+  const intent = (triage?.payload as { intent?: string } | null)?.intent;
+  return intent ?? "other";
 }
