@@ -1,0 +1,11 @@
+{
+  "name": "intent-smoke",
+  "note": "S09 seed dataset. Datasets are version-controlled DATA and grow like the S03 email corpus — every production surprise becomes a new case. The AI target that this grades arrives in S11 (triage); until then it exercises the harness itself.",
+  "cases": [
+    { "id": "billing-refund", "input": "I want a refund for last month's charge", "expected": "billing", "rubric": ["refund", "billing"], "tags": ["billing"] },
+    { "id": "tech-webhook", "input": "your webhook stopped firing after the deploy", "expected": "technical", "rubric": ["webhook"], "tags": ["technical"] },
+    { "id": "cancel", "input": "how do I cancel my subscription", "expected": "billing", "rubric": ["cancel", "subscription"], "tags": ["billing"] },
+    { "id": "sales-quote", "input": "can I get a quote for 200 seats", "expected": "sales", "rubric": ["quote", "seats"], "tags": ["sales"] },
+    { "id": "ambiguous", "input": "hi, quick question", "expected": "general", "rubric": [], "tags": ["ambiguous"] }
+  ]
+}
