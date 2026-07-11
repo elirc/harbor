@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canTransition, stateAfterInbound, isEmailable, renderCanned, buildReplyHeaders } from "./conversation";
+import { canTransition, stateAfterInbound, InboxAssignments, isEmailable, renderCanned, buildReplyHeaders } from "./conversation";
 
 describe("conversation state machine (S04)", () => {
   it("allows valid transitions and rejects invalid ones", () => {
@@ -12,6 +12,34 @@ describe("conversation state machine (S04)", () => {
   it("an inbound message reopens the conversation from any state", () => {
     expect(stateAfterInbound("closed")).toBe("open");
     expect(stateAfterInbound("snoozed")).toBe("open");
+  });
+});
+
+describe("the double-claim race (S04, in-PR arc — Tracer S6 revisited)", () => {
+  it("NAIVE claim RACES: two agents claim one unassigned conversation → BOTH think they won", async () => {
+    const inbox = new InboxAssignments();
+    inbox.seed("conv-1", null);
+    let release!: () => void;
+    const gate = new Promise<void>((res) => (release = res));
+    const p1 = inbox.claimNaive("conv-1", "ada", () => gate); // stalls in the race window
+    const p2 = inbox.claimNaive("conv-1", "ravi"); // reads null, writes ravi
+    await p2;
+    release();
+    const [r1, r2] = await Promise.all([p1, p2]);
+    expect(r1.ok && r2.ok).toBe(true); // 💥 BOTH succeeded — the shared-inbox race
+    // ...and ada silently overwrote ravi: the assignee is whoever wrote last, with no one told they lost.
+    expect(inbox.assigneeOf("conv-1")).toBe("ada");
+  });
+
+  it("the precondition claim (atomic set-if-null) lets exactly ONE agent win", () => {
+    // RED until the next commit: `claim` does not exist yet. This test is the SPEC for the fix — exactly one
+    // winner, the loser gets a clean "already claimed" with the winner's id, never a silent overwrite.
+    const inbox = new InboxAssignments();
+    inbox.seed("conv-2", null);
+    const first = inbox.claim("conv-2", "ada");
+    const second = inbox.claim("conv-2", "ravi");
+    expect(first).toEqual({ ok: true, assigneeId: "ada" });
+    expect(second).toEqual({ ok: false, assigneeId: "ada" }); // clean "already claimed", not an overwrite
   });
 });
 
