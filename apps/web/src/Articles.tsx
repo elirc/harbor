@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { apiGet, apiPost } from "./lib/api";
 import { Search } from "./Search";
+import { AskDocs } from "./AskDocs";
 
 interface Article {
   id: string;
@@ -45,6 +46,7 @@ export function Articles(): JSX.Element {
     <section style={{ marginTop: 24 }}>
       <h2 style={{ fontSize: 16, color: "#1d76db" }}>Help Center · Articles</h2>
       <Search />
+      <AskDocs />
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" style={input} />
       <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write the article… (blank line separates paragraphs)" style={textarea} />
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
