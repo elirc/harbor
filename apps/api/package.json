@@ -16,6 +16,7 @@
     "@harbor/db": "workspace:*",
     "@harbor/llm": "workspace:*",
     "@harbor/mailin": "workspace:*",
+    "@harbor/rag": "workspace:*",
     "@harbor/shared": "workspace:*",
     "fastify": "^5.1.0",
     "zod": "^3.23.8"
