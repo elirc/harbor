@@ -6,6 +6,7 @@ import { healthRoutes } from "./routes/health";
 import { conversationRoutes } from "./routes/conversations";
 import { contactRoutes } from "./routes/contacts";
 import { inboundRoutes } from "./routes/inbound";
+import { inboxRoutes } from "./routes/inbox";
 
 /** Build (but don't start) the app so tests can boot it in-process via `app.inject(...)`. */
 export function buildServer(): FastifyInstance {
@@ -24,5 +25,6 @@ export function buildServer(): FastifyInstance {
   void app.register(conversationRoutes);
   void app.register(contactRoutes);
   void app.register(inboundRoutes);
+  void app.register(inboxRoutes);
   return app;
 }

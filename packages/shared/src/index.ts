@@ -25,8 +25,10 @@ export interface InboxItem {
   conversationId: string;
   subject: string;
   state: ConversationState;
+  assigneeId: string | null; // S04: null = unassigned
   lastMessagePreview: string;
   updatedAt: string;
 }
 
 export * from "./identity";
+export * from "./conversation";
