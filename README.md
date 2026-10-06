@@ -38,6 +38,11 @@ latency.
 pnpm + Turborepo · TypeScript strict · `apps/web` (Next.js) · `apps/api` (Fastify) · `apps/worker` (BullMQ) ·
 `packages/{messenger, mailin, llm, eval, rag, db (Prisma + pgvector), shared, config}` · PostgreSQL + Redis.
 
+*As shipped at v1.0.0 (checked 2026-10-06):* `apps/web` is a **Vite + React** SPA, not Next.js; `apps/worker`
+has no BullMQ/Redis dependency — `src/index.ts` is a placeholder, and the SLA monitor (`sla-monitor.ts`) and
+re-embed job (`reembed.ts`) are pure, unit-tested functions not yet attached to a queue. Prisma + pgvector and
+Fastify are as planned.
+
 CI runs **without live infra and without live LLM calls** — pure cores + in-memory fakes + a mock model.
 
 ## Docs
